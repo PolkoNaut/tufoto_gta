@@ -588,7 +588,11 @@
   const thumbDims=document.getElementById('thumbDims');
   const previewEmpty=document.getElementById('previewEmpty');
 
-  dropzone.addEventListener('click',()=>fileInput.click());
+  dropzone.addEventListener('click',(e)=>{
+    if(e.target===fileInput) return; // evita loop: el click programático del input burbujea hasta acá
+    fileInput.click();
+  });
+  fileInput.addEventListener('click', e=>e.stopPropagation());
   dropzone.addEventListener('dragover',e=>{e.preventDefault(); dropzone.classList.add('drag');});
   dropzone.addEventListener('dragleave',()=>dropzone.classList.remove('drag'));
   dropzone.addEventListener('drop',e=>{
