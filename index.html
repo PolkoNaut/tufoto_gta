@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>NEBULEX VI — Estudio Fotográfico Vice City</title>
 <meta name="description" content="Subí una foto, aplicale estilo Vice City y descargala lista para cualquier pantalla.">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%230A0714'/%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23FF4FA3'/%3E%3Cstop offset='1' stop-color='%23FF9F5A'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ctext x='32' y='45' font-family='Arial,Helvetica,sans-serif' font-weight='900' font-size='30' text-anchor='middle' fill='url(%23g)'%3EVI%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
@@ -303,6 +304,13 @@
   footer .by{font-size:20px; letter-spacing:.1em;}
   footer .disclaimer{font-size:11.5px; color:var(--ink-dim); max-width:520px;}
 
+  .lib-error-banner{
+    display:none; position:fixed; top:0; left:0; right:0; z-index:200;
+    background:#3d0f1f; color:#ffd9e2; border-bottom:2px solid var(--pink);
+    padding:12px 18px; text-align:center; font-family:'Rajdhani',sans-serif;
+    font-size:13px; letter-spacing:.03em;
+  }
+  .lib-error-banner b{color:#fff;}
   .toast{
     position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(20px);
     background:var(--bg-2); border:1px solid var(--pink); color:var(--ink);
@@ -449,6 +457,10 @@
   <div class="disclaimer">Estética inspirada en Grand Theft Auto VI — proyecto independiente / fan-made, sin afiliación con Rockstar Games ni Take-Two Interactive.</div>
 </footer>
 
+<div class="lib-error-banner" id="libErrorBanner">
+  <b>No se pudo cargar el motor de estilo (three.js) desde internet.</b>
+  Revisá tu conexión y recargá la página. Si estás viéndolo dentro de un chat, abrilo en una pestaña normal del navegador.
+</div>
 <div class="toast" id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -456,6 +468,12 @@
 <script>
 (function(){
   "use strict";
+
+  if (typeof THREE === 'undefined') {
+    const banner = document.getElementById('libErrorBanner');
+    if (banner) banner.style.display = 'block';
+    return; // sin three.js no hay motor de estilo: frenamos acá en vez de romper a mitad de camino
+  }
 
   /* ============================================================
      UTIL
@@ -490,6 +508,11 @@
     let s = seed % 2147483647; if (s<=0) s+=2147483646;
     return function(){ s = s*16807 % 2147483647; return (s-1)/2147483646; };
   }
+
+  // Declarado temprano a propósito: bindSlider() más abajo dispara scheduleRender()
+  // de inmediato al registrarse, así que needsRender debe existir antes de eso.
+  let needsRender=true;
+  function scheduleRender(){ needsRender=true; }
 
   /* ============================================================
      PRESETS
@@ -900,8 +923,6 @@
   ============================================================ */
   const previewCanvas=document.getElementById('photoCanvas');
   const previewFrame=document.getElementById('previewFrame');
-  let needsRender=true;
-  function scheduleRender(){ needsRender=true; }
 
   const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   function previewLoop(){
@@ -973,6 +994,7 @@
 
   document.getElementById('downloadAllBtn').addEventListener('click', async ()=>{
     if(!requireImage()) return;
+    if(typeof JSZip==='undefined'){ toast('No se pudo cargar el compresor ZIP. Recargá la página.'); return; }
     const status=document.getElementById('exportStatus');
     const zip=new JSZip();
     for(let i=0;i<SIZES.length;i++){
